@@ -1,0 +1,141 @@
+#include <ESP8266WiFi.h>;
+#include <WiFiClient.h>;
+#include <ThingSpeak.h>;
+
+//SSID and Password for Wi-Fi connection
+const char* ssid = "StreeLight";
+const char* password = "alohamora/*";
+
+//Thingspeak application connection
+unsigned long myChannelNumber = 1304649; //Channel number 
+const char * myWriteAPIKey = "N8UYYW5RXGWHXZQV"; //Write API key
+const char * myReadAPIKey = "0BK63UUU4AMEL6OR"; //Read API key
+
+//variable definition for GPIO pins of leds and IR sensors, ADC channel
+WiFiClient client;
+int led_1;
+int led_2; 
+int led_3;
+
+int ir1 = D0;
+int led1 = D5;
+
+int ir2 = D1;
+int led2 = D6;
+
+int ir3 = D2;
+int led3 = D7;
+
+int ldr = A0;
+int val =0;
+
+void setup() {
+  Serial.begin(9600);
+  delay(5);
+  //pinMode definition for pins of led and IR sensor on the NodeMCU.
+  pinMode(ir1,INPUT);
+  pinMode(led1,OUTPUT);
+
+  pinMode(ir2,INPUT);
+  pinMode(led2,OUTPUT);
+
+  pinMode(ir3,INPUT);
+  pinMode(led3,OUTPUT);
+  //PinMode definition for LDR sensor
+  pinMode(ldr,INPUT);
+  //Initialization of Wi-Fi and ThingSpeak
+  WiFi.begin(ssid, password);
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  //taking digital value of the IR sensors and analog value of LDR sensor and storing them in variables.
+  int s1 = digitalRead(ir1);
+  int s2 = digitalRead(ir2);
+  int s3 = digitalRead(ir3);
+  s1 = not(s1);
+  s2 = not(s2);
+  s3 = not(s3);
+  val = analogRead(ldr);
+  Serial.print(s1);
+  Serial.print(":");
+  Serial.print(s2);
+  Serial.print(":");
+  Serial.print(s3);
+  Serial.print("  ");
+  Serial.println(val);
+  //checking the value of LDR sensor for low light
+  if(val<220)//if the analogvalue of LDR is less than 220 its night time hence the led glows
+  {//and if IR sensor detects motion/obstacle LED will turn on 
+    //If the analog value of the LDR sensor is more than 700 then it will be considered as 
+    //daytime and LEDs will not glow even if IR sensor detects someone passing the street.
+    if(s1==0)
+    {
+      digitalWrite(led1,LOW);
+    }
+    else
+    {
+      digitalWrite(led1,HIGH);
+    }
+    if(s2==0)
+    {
+      digitalWrite(led2,LOW);
+    }
+    else
+    {
+      digitalWrite(led2,HIGH);
+    }
+
+    if(s3==0)
+    {
+      digitalWrite(led3,LOW);
+    }
+    else
+    {
+      digitalWrite(led3,HIGH);
+    }
+  }
+  else
+  {
+    digitalWrite(led1,LOW);
+    digitalWrite(led2,LOW);
+    digitalWrite(led3,LOW);
+  }
+  //Uploading the data of LDR sensors, IR sensor and Leds to Thingspeak cloud
+  ThingSpeak.writeField(1304649, 1,val, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 2,s1, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 3,s2, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 4,s3, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 5,led1, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 6,led2, "N8UYYW5RXGWHXZQV");
+  ThingSpeak.writeField(1304649, 7,led3, "N8UYYW5RXGWHXZQV");
+  //changing the state of LEDs using ThingSpeak
+  led_1 = ThingSpeak.readIntField(1304649, 5, "0BK63UUU4AMEL6OR");
+  led_2 = ThingSpeak.readIntField(1304649, 6, "0BK63UUU4AMEL6OR");
+  led_3 = ThingSpeak.readIntField(1304649, 7, "0BK63UUU4AMEL6OR");
+  if(led_1==1)
+  {
+    digitalWrite(led1,HIGH);
+  }
+  else
+  {
+    digitalWrite(led1,LOW);
+  }
+  if(led_2==1)
+  {
+    digitalWrite(led2,HIGH);
+  }
+  else
+  {
+    digitalWrite(led2,LOW);
+  }
+
+  if(led_3==1)
+  {
+    digitalWrite(led3,HIGH);
+  }
+  else
+  {
+    digitalWrite(led3,LOW);
+  }
+}
